@@ -5,7 +5,7 @@ Common utility function
 from mimosa.common import soft_min
 
 
-def calc_utility(consumption, population, elasmu):
+def calc_utility(consumption, population, elasmu, region_weight=1):
     """
     The utility function is a concave function of per-capita consumption, given by:
 
@@ -19,4 +19,4 @@ def calc_utility(consumption, population, elasmu):
     """
 
     # Note that the `soft_min` function is used to avoid division by zero
-    return (soft_min(consumption / population) ** (1 - elasmu) - 1) / (1 - elasmu)
+    return (region_weight * soft_min(consumption / population) ** (1 - elasmu) - 1) / (1 - elasmu)

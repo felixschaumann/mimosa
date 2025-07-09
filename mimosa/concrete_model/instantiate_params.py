@@ -117,6 +117,7 @@ class InstantiatedModel:
             "t": V(range(num_years)),
             "year2100": V(year2100),
             "regions": V(params["regions"].keys()),
+            "region_weights": params["region_weights"],
         }
         parameter_mapping.update(parameter_mapping_manual)
 

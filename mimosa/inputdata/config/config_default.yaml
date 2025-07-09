@@ -451,6 +451,7 @@ model:
     descr: Welfare and utility module to be used
     type: enum
     values:
+      - weighted_welfare_loss_minimising
       - welfare_loss_minimising
       - cost_minimising
       - inequal_aversion_general
@@ -558,6 +559,45 @@ regions:
     OCE:
     RSAS:
     RSAF:
+
+region_weights:
+  descr: >-
+    Dictionary of all regions dictionaries defining
+    manual values for certain welfare weights of the given region.
+  type: dict
+  keys:
+    descr: region name
+    type: str
+  values:
+    descr: regional welfare weights
+    type: float
+  default:
+    CAN: 1.0
+    USA: 1.0
+    MEX: 1.0
+    RCAM: 1.0
+    BRA: 1.0
+    RSAM: 1.0
+    NAF: 1.0
+    WAF: 1.0
+    EAF: 1.0
+    SAF: 1.0
+    WEU: 1.0
+    CEU: 1.0
+    TUR: 1.0
+    UKR: 1.0
+    STAN: 1.0
+    RUS: 1.0
+    ME: 1.0
+    INDIA: 1.0
+    KOR: 1.0
+    CHN: 1.0
+    SEAS: 1.0
+    INDO: 1.0
+    JAP: 1.0
+    OCE: 1.0
+    RSAS: 1.0
+    RSAF: 1.0
 
 ##################
 

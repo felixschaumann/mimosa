@@ -62,6 +62,11 @@ def create_abstract_model(
     m.year2100 = Param()
 
     m.regions = Set(ordered=True)
+    m.region_weights = Param(
+        m.regions,
+        doc="::region_weights",
+        units=quant.unit("dimensionless"),
+    )
 
     ######################
     # Create data params for baseline values
@@ -163,6 +168,8 @@ def create_abstract_model(
         constraints.extend(welfare.cost_minimising.get_constraints(m))
     elif welfare_module == "inequal_aversion_general":
         constraints.extend(welfare.inequal_aversion_general.get_constraints(m))
+    elif welfare_module == "weighted_welfare_loss_minimising":
+        constraints.extend(welfare.weighted_welfare_loss_minimising.get_constraints(m))
     else:
         raise NotImplementedError(f"Welfare module `{welfare_module}` not implemented")
 
