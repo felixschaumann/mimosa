@@ -142,10 +142,11 @@ cumulative = plot_regional_budgets(savepath, r5=True)
 # %%
 # minimise distance to scenario
 
-scenario_budget = np.array([408.762635, -68.14466, 155.302528, 228.120371, 50.5201793,
-])
+# scenario_budget = np.array([408.762635, -68.14466, 155.302528, 228.120371, 50.5201793,]) # message
+scenario_budget = np.array([])
 
-tol = 1e-0
+scenario = "message_C3"
+tol = 1e-1
 opt_elasmu = True
 
 def objective(weights, elasmu=1.01):
@@ -166,7 +167,7 @@ def objective(weights, elasmu=1.01):
 
 if opt_elasmu:
     initial_guess = [1.01, 1.0, 1.0, 1.0, 1.0, 1.0]
-    bounds = [(0.1, 5.0)] * 6
+    bounds = [(0.2, 5.0)] * 6
 else: 
     # Initial guess for the 5 weights (same order as r5_weights)
     initial_guess = [1.0, 1.0, 1.0, 1.0, 1.0]  # Adjust as needed
@@ -198,5 +199,17 @@ cumulative = plot_regional_budgets(savepath, r5=True)
 print("Final cumulative budgets:", cumulative)
 print("Scenario budgets:", scenario_budget)
 print("Difference:", np.array(cumulative) - scenario_budget)
+
+# %%
+# save opt_r5_weights to csv
+opt_r5_weights_df = pd.DataFrame.from_dict(opt_r5_weights, orient='index', columns=['Weight'])
+opt_r5_weights_df.index.name = 'Region'
+opt_r5_weights_df.to_csv(f'opt_r5_weights_{scenario}.csv')
+
+# save elasmu to csv
+if opt_elasmu:
+    elasmu_df = pd.DataFrame({'elasmu': [elasmu]})
+    elasmu_df.to_csv(f'opt_elasmu_{scenario}.csv', index=False)
+
 
 # %%
