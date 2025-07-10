@@ -4,6 +4,7 @@ from mimosa import MIMOSA, load_params
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+from scipy.optimize import minimize
 
 regions = ['CAN', 'USA', 'MEX', 'RCAM', 'BRA', 'RSAM', 'NAF', 'WAF', 'EAF', 'SAF', 'WEU', 'CEU', 'TUR', 'UKR', 'STAN', 'RUS', 'ME', 'INDIA', 'KOR', 'CHN', 'SEAS', 'INDO', 'JAP', 'OCE', 'RSAS', 'RSAF']
 
@@ -48,11 +49,12 @@ def plot_vars(data_list, label_list):
         ax.spines['right'].set_visible(False)
         ax.spines['top'].set_visible(False)        
 
-def run_mimosa(carbon_budget, welfare, weights=None):
+def run_mimosa(carbon_budget, welfare, weights=None, elasmu=1.01):
 
     params = load_params()
 
     params["model"]["welfare module"] = welfare
+    params["economics"]["elasmu"] = elasmu
     params["emissions"]["carbonbudget"] = "775 GtCO2"
 
     if weights is not None:
@@ -66,13 +68,13 @@ def run_mimosa(carbon_budget, welfare, weights=None):
     model = MIMOSA(params)
     model.solve()
 
-    savepath = f"run_{welfare}_carbonbudget_{carbon_budget.replace(' ', '_')}"
+    savepath = f"run_{welfare}_carbonbudget_{carbon_budget.replace(' ', '_')}_elasmu_{elasmu:.2f}"
 
     model.save(savepath)
 
     return model, savepath
 
-def plot_regional_budgets(savepath, r5=True):
+def plot_regional_budgets(savepath, r5=True, show_plots=True):
     
     emissions_df = pd.read_csv("./output/"+savepath+".csv")
     emissions_df = emissions_df.loc[emissions_df.Variable=='regional_emissions']
@@ -95,22 +97,23 @@ def plot_regional_budgets(savepath, r5=True):
     value_col = cumulative_emissions.columns[-2]  # usually the last column before 'R5'
     r5_cumulative = cumulative_emissions.groupby('R5', as_index=False)[value_col].sum()
 
-    fig, ax = plt.subplots(figsize=(14, 7))
-    ax.set_title('Very unequal distribution of remaining carbon budget → unequitable?')
-    ax.axhline(0, color='black', linewidth=0.8, linestyle='--')
-    ax.set_ylabel('Remaining carbon budget until 2100 (GtCO2)')
-    ax.yaxis.grid(True, linestyle='--', alpha=0.5)
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+    if not show_plots == False:
+        fig, ax = plt.subplots(figsize=(14, 7))
+        ax.set_title('Very unequal distribution of remaining carbon budget → unequitable?')
+        ax.axhline(0, color='black', linewidth=0.8, linestyle='--')
+        ax.set_ylabel('Remaining carbon budget until 2100 (GtCO2)')
+        ax.yaxis.grid(True, linestyle='--', alpha=0.5)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
 
-    if r5:
-        ax.bar(list(r5_cumulative.R5), r5_cumulative.iloc[:, 1], color='teal')
-        ax.set_xticklabels(r5_cumulative['R5'])
-        ax.set_ylim(-50, 400)
-    else:
-        ax.bar(list(cumulative_emissions.Region), cumulative_emissions.iloc[:, -2], color='teal')
-        ax.set_xticklabels(cumulative_emissions['Region'])
-        ax.set_ylim(-30, 130)
+        if r5:
+            ax.bar(list(r5_cumulative.R5), r5_cumulative.iloc[:, 1], color='teal')
+            ax.set_xticklabels(r5_cumulative['R5'])
+            ax.set_ylim(-150, 450)
+        else:
+            ax.bar(list(cumulative_emissions.Region), cumulative_emissions.iloc[:, -2], color='teal')
+            ax.set_xticklabels(cumulative_emissions['Region'])
+            ax.set_ylim(-30, 130)
         
     return r5_cumulative.iloc[:, -1].values if r5 else cumulative_emissions.iloc[:, -2].values
 
@@ -118,21 +121,80 @@ def plot_regional_budgets(savepath, r5=True):
 
 welfare = "weighted_welfare_loss_minimising"
 carbon_budget = "775 GtCO2"
+elasmu = 2
 
 r5_weights = {
-    'R5_OECD': 0.5,
-    'R5_LAM': 5.0,
-    'R5_REF': 1.0,
-    'R5_MAF': 1.0,
-    'R5_ASIA': 1.0
+    'R5_OECD': 1.52,
+    'R5_LAM': 0.55,
+    'R5_REF': 0.51,
+    'R5_MAF': 0.58,
+    'R5_ASIA': 0.99
 }
 
 region_weights = {k: r5_weights[v] for k, v in r5_map.items()}
 
-model, savepath = run_mimosa(carbon_budget, welfare, weights=region_weights)
+model, savepath = run_mimosa(carbon_budget, welfare, weights=region_weights, elasmu=elasmu)
 
 #%%
 
 cumulative = plot_regional_budgets(savepath, r5=True)
+
+# %%
+# minimise distance to scenario
+
+scenario_budget = np.array([408.762635, -68.14466, 155.302528, 228.120371, 50.5201793,
+])
+
+tol = 1e-0
+opt_elasmu = True
+
+def objective(weights, elasmu=1.01):
+    # Map weights to R5 groups
+    r5_keys = list(r5_weights.keys())
+    test_r5_weights = dict(zip(r5_keys, weights))
+    region_weights = {k: test_r5_weights[v] for k, v in r5_map.items()}
+    # Run model
+    model, savepath = run_mimosa(carbon_budget, welfare, weights=region_weights, elasmu=elasmu)
+    # Get cumulative budgets for R5 regions
+    cumulative_arr = np.array(plot_regional_budgets(savepath, r5=True, show_plots=False))
+    print("Trying weights:", weights, "Objective:", np.sum((cumulative_arr - scenario_budget) ** 2))
+    if elasmu != 1.01:
+        print("elasmu:", elasmu)
+    return np.sum((cumulative_arr - scenario_budget) ** 2)
+
+if opt_elasmu:
+    initial_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.01]
+    bounds = [(0.1, 5.0)] * 6
+else: 
+    # Initial guess for the 5 weights (same order as r5_weights)
+    initial_guess = [1.0, 1.0, 1.0, 1.0, 1.0]  # Adjust as needed
+    bounds = [(0.1, 5.0)] * 5
+
+# Run the optimizer
+result = minimize(objective, initial_guess, bounds=bounds, tol=tol, method="Powell")
+
+print("Optimized R5 weights:", result.x[:5])
+if opt_elasmu:
+    print("Optimized elasmu:", result.x[5])
+print("Objective function value:", result.fun)
+
+if opt_elasmu:
+    # Use the optimized weights to run the final model with elasmu
+    opt_r5_weights = dict(zip(r5_weights.keys(), result.x[:5]))
+    elasmu = result.x[5]
+else:
+    # Use the optimized weights to run the final model
+    opt_r5_weights = dict(zip(r5_weights.keys(), result.x))
+
+region_weights = {k: opt_r5_weights[v] for k, v in r5_map.items()}
+
+if opt_elasmu:
+    model, savepath = run_mimosa(carbon_budget, welfare, weights=region_weights, elasmu=elasmu)
+else:
+    model, savepath = run_mimosa(carbon_budget, welfare, weights=region_weights)
+cumulative = plot_regional_budgets(savepath, r5=True)
+print("Final cumulative budgets:", cumulative)
+print("Scenario budgets:", scenario_budget)
+print("Difference:", np.array(cumulative) - scenario_budget)
 
 # %%
