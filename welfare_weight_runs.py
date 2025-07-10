@@ -151,19 +151,21 @@ opt_elasmu = True
 def objective(weights, elasmu=1.01):
     # Map weights to R5 groups
     r5_keys = list(r5_weights.keys())
-    test_r5_weights = dict(zip(r5_keys, weights))
+    test_r5_weights = dict(zip(r5_keys, weights[1:])) if len(weights)==6 else dict(zip(r5_keys, weights))
     region_weights = {k: test_r5_weights[v] for k, v in r5_map.items()}
     # Run model
-    model, savepath = run_mimosa(carbon_budget, welfare, weights=region_weights, elasmu=elasmu)
+    model, savepath = run_mimosa(carbon_budget, welfare, weights=region_weights, elasmu=weights[0] if len(weights)==6 else elasmu)
     # Get cumulative budgets for R5 regions
     cumulative_arr = np.array(plot_regional_budgets(savepath, r5=True, show_plots=False))
-    print("Trying weights:", weights, "Objective:", np.sum((cumulative_arr - scenario_budget) ** 2))
-    if elasmu != 1.01:
-        print("elasmu:", elasmu)
+    if len(weights)==6:
+        print("Trying weights:", weights[1:], "Objective:", np.sum((cumulative_arr - scenario_budget) ** 2))
+        print("elasmu:", weights[0])
+    else:
+        print("Trying weights:", weights, "Objective:", np.sum((cumulative_arr - scenario_budget) ** 2))
     return np.sum((cumulative_arr - scenario_budget) ** 2)
 
 if opt_elasmu:
-    initial_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.01]
+    initial_guess = [1.01, 1.0, 1.0, 1.0, 1.0, 1.0]
     bounds = [(0.1, 5.0)] * 6
 else: 
     # Initial guess for the 5 weights (same order as r5_weights)
@@ -173,15 +175,15 @@ else:
 # Run the optimizer
 result = minimize(objective, initial_guess, bounds=bounds, tol=tol, method="Powell")
 
-print("Optimized R5 weights:", result.x[:5])
+print("Optimized R5 weights:", result.x[1:])
 if opt_elasmu:
-    print("Optimized elasmu:", result.x[5])
+    print("Optimized elasmu:", result.x[0])
 print("Objective function value:", result.fun)
 
 if opt_elasmu:
     # Use the optimized weights to run the final model with elasmu
-    opt_r5_weights = dict(zip(r5_weights.keys(), result.x[:5]))
-    elasmu = result.x[5]
+    opt_r5_weights = dict(zip(r5_weights.keys(), result.x[1:]))
+    elasmu = result.x[0]
 else:
     # Use the optimized weights to run the final model
     opt_r5_weights = dict(zip(r5_weights.keys(), result.x))
