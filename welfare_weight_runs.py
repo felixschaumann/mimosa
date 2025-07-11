@@ -55,7 +55,7 @@ def run_mimosa(carbon_budget, welfare, weights=None, elasmu=1.01):
 
     params["model"]["welfare module"] = welfare
     params["economics"]["elasmu"] = elasmu
-    params["emissions"]["carbonbudget"] = "775 GtCO2"
+    params["emissions"]["carbonbudget"] = carbon_budget
 
     if weights is not None:
         params["region_weights"] = weights
@@ -142,12 +142,17 @@ cumulative = plot_regional_budgets(savepath, r5=True)
 # %%
 # minimise distance to scenario
 
-# scenario_budget = np.array([408.762635, -68.14466, 155.302528, 228.120371, 50.5201793,]) # message
-scenario_budget = np.array([])
+# scenario_budget = np.array([408.762635, -68.14466, 155.302528, 228.120371, 50.5201793,]) # message C3
+# scenario_budget = np.array([331.4506577, -116.585561, 64.33625214, -2.924358264, 62.99636074]) # image C2
+# scenario_budget = np.array([241.3040656, -143.9911212, 81.8121524, 181.8422117, 31.40160669]) # message C2
+scenario_budget = np.array([406.4454569, 9.4014275, 139.8349114, 137.5121418, 9.7702623]) # remind C2
 
-scenario = "message_C3"
+scenario = "remind_C2" # "image_C2" # message_C2 # remind_C2
+# carbon_budget = "339 GtCO2" # image C2
+# carbon_budget = "392 GtCO2" # message C2
+carbon_budget = "703 GtCO2" # remind C2
 tol = 1e-1
-opt_elasmu = True
+opt_elasmu = False
 
 def objective(weights, elasmu=1.01):
     # Map weights to R5 groups
